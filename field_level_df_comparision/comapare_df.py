@@ -1,19 +1,13 @@
 import datetime
 
-from pandas import DataFrame as df
 import pandas as pd
+from pandas import DataFrame as df
 
-data1 = {'Name': ['John', 'Anna', 'Peter', 'Linda'],
-         'Age': [25, 32, 41, 29],
-         'City': ['New York', 'Paris', 'London', 'Berlin'],
-         'Roll': [1, 2, 3, 4]
-         }
+data1 = {'Name': ['John', 'Anna', 'Peter', 'Linda'], 'Age': [25, 32, 41, 29],
+         'City': ['New York', 'Paris', 'London', 'Berlin'], 'Roll': [1, 2, 3, 4]}
 
-data2 = {'Name': ['John', 'Anna', 'Robin', 'Linda', 'Sam'],
-         'Age': [25, 32, 44, 29, 33],
-         'City': ['New York', 'Hamburg', 'Dublin', 'Berlin', 'Hongkong'],
-         'Roll': [1, 2, 5, 4, 4]
-         }
+data2 = {'Name': ['John', 'Anna', 'Robin', 'Linda', 'Sam'], 'Age': [25, 32, 44, 29, 33],
+         'City': ['New York', 'Hamburg', 'Dublin', 'Berlin', 'Hongkong'], 'Roll': [1, 2, 5, 4, 4]}
 test_src_df = pd.DataFrame(data1)
 test_trg_df = pd.DataFrame(data2)
 
@@ -28,10 +22,7 @@ def check_duplicate_id(src_df: df, trg_df: df, src_id_field="_id", trg_id_field=
     trg_repeating_ids = trg_df[trg_df.duplicated(trg_id_field)][trg_id_field].tolist()
 
     # Return dictionary containing repeating IDs
-    return {
-        "src_df_repeating_ids": src_repeating_ids,
-        "trg_df_repeating_ids": trg_repeating_ids
-    }
+    return {"src_df_repeating_ids": src_repeating_ids, "trg_df_repeating_ids": trg_repeating_ids}
 
 
 def get_common_fields(src_df: df, trg_df: df):
@@ -39,11 +30,7 @@ def get_common_fields(src_df: df, trg_df: df):
     return list(common_field_names)
 
 
-def compare_df(src_df: df,
-               trg_df: df,
-               id_name: str,
-               result_dir: str,
-               file_name_prefix="report"):
+def compare_df(src_df: df, trg_df: df, id_name: str, result_dir: str, file_name_prefix="report"):
     # Checking for duplicate ids
     mis_match_id_column_map = check_duplicate_id(src_df, trg_df, "Roll")
     if mis_match_id_column_map['src_df_repeating_ids']:
@@ -67,8 +54,7 @@ def compare_df(src_df: df,
 
     for field in common_fields:
         if src_df[field].dtype != trg_df[field].dtype:
-            print(
-                f"""data type mismatch for field {field}, src d_type {src_df[field].dtype}, 
+            print(f"""data type mismatch for field {field}, src d_type {src_df[field].dtype}, 
                 trg d_type {trg_df[field].dtype}. Casting both as string""")
             src_df[field] = src_df[field].astype(str)
             trg_df[field] = trg_df[field].astype(str)
@@ -86,8 +72,8 @@ def compare_df(src_df: df,
 
     # Checking for mismatch
     src_columns = merged_df.filter(like='_src').columns
-    unequal_df = pd.DataFrame(columns=merged_df.columns)
-    equal_df = pd.DataFrame(columns=merged_df.columns)
+    unequal_df = merged_df.iloc[:0, :].copy()
+    equal_df = merged_df.iloc[:0, :].copy()
     mismatch_map = {}
     for index, row in merged_df[merged_df['_merge'] == 'both'].iterrows():
         ls = []
@@ -111,16 +97,11 @@ def compare_df(src_df: df,
 
     current_time_stamp = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     file_name = f'{result_dir}/{file_name_prefix}_{current_time_stamp}.xlsx'
-    summary_map = {
-        "src_total_count": [src_df.shape[0]],
-        "trg_total_count": [trg_df.shape[0]],
-        "both_matched": [equal_df.shape[0]],
-        "only_in_src": [left_only_df.shape[0]],
-        "only_in_trg": [right_only_df.shape[0]],
-        "mismatched": [unequal_df.shape[0]]
-    }
+    summary_map = {"src_total_count": [src_df.shape[0]], "trg_total_count": [trg_df.shape[0]],
+        "both_matched": [equal_df.shape[0]], "only_in_src": [left_only_df.shape[0]],
+        "only_in_trg": [right_only_df.shape[0]], "mismatched": [unequal_df.shape[0]]}
     summary_df = pd.DataFrame(summary_map)
-    mismatch_df = pd.DataFrame(list(mismatch_map.items()), columns=['Key', 'Value'])
+    mismatch_df = pd.DataFrame(list(mismatch_map.items()), columns=[id_name, 'fields_mismatched'])
     with pd.ExcelWriter(file_name) as writer:
         right_only_df.to_excel(writer, sheet_name="right_only", index=False)
         left_only_df.to_excel(writer, sheet_name="left_only", index=False)

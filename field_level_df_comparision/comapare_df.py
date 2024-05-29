@@ -2,6 +2,7 @@ import datetime
 
 import pandas as pd
 from pandas import DataFrame as df
+from tabulate import tabulate as tb
 
 data1 = {'Name': ['John', 'Anna', 'Peter', 'Linda'], 'Age': [25, 32, 41, 29],
          'City': ['New York', 'Paris', 'London', 'Berlin'], 'Roll': [1, 2, 3, 4]}
@@ -60,7 +61,8 @@ def compare_df(src_df: df, trg_df: df, id_name: str, result_dir: str, file_name_
             trg_df[field] = trg_df[field].astype(str)
     # Comparing starts
     merged_df = df.merge(src_df, trg_df, on=id_name, how="outer", suffixes=("_src", "_trg"), indicator=True)
-    print(merged_df.to_string(index=False))
+    print(f"Total src df count {src_df.shape[0]}, trg df count: {trg_df.shape[0]}")
+    print(tb(merged_df.head(50), headers='keys', tablefmt='pretty'))
 
     # Contains data only in src df
     left_only_df = merged_df[merged_df['_merge'] == 'left_only'].rename(columns=lambda x: x.replace('_src', '')).filter(
@@ -86,22 +88,26 @@ def compare_df(src_df: df, trg_df: df, id_name: str, result_dir: str, file_name_
             unequal_df = pd.concat([unequal_df, pd.DataFrame([row])], ignore_index=True)
         else:
             equal_df = pd.concat([equal_df, pd.DataFrame([row])], ignore_index=True)
-    print("Mismatch dict")
-    print(mismatch_map)
-    print("left only")
-    print(left_only_df)
-    print("right_only_df")
-    print(right_only_df)
-    print("both_match_df")
-    print(equal_df)
+
+    summary_map = {"src_total_count": [src_df.shape[0]], "trg_total_count": [trg_df.shape[0]],
+                   "both_matched": [equal_df.shape[0]], "only_in_src": [left_only_df.shape[0]],
+                   "only_in_trg": [right_only_df.shape[0]], "mismatched": [unequal_df.shape[0]]}
+    summary_df = pd.DataFrame(summary_map)
+    mismatch_df = pd.DataFrame(list(mismatch_map.items()), columns=[id_name, 'fields_mismatched'])
+
+    print(f"left only. Count: {left_only_df.shape[0]}")
+    print(tb(left_only_df, headers='keys', tablefmt='pretty'))
+    print(f"right_only_df. Count: {right_only_df.shape[0]}")
+    print(tb(right_only_df, headers='keys', tablefmt='pretty'))
+    print(f"both_match_df. Count: {equal_df.shape[0]}")
+    print(tb(equal_df, headers='keys', tablefmt='pretty'))
+    print(f"Mismatch df. Count: {mismatch_df.shape[0]}")
+    print(tb(mismatch_df, headers='keys', tablefmt='pretty'))
+    print("Summary")
+    print(tb(summary_df, headers='keys', tablefmt='pretty'))
 
     current_time_stamp = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
     file_name = f'{result_dir}/{file_name_prefix}_{current_time_stamp}.xlsx'
-    summary_map = {"src_total_count": [src_df.shape[0]], "trg_total_count": [trg_df.shape[0]],
-        "both_matched": [equal_df.shape[0]], "only_in_src": [left_only_df.shape[0]],
-        "only_in_trg": [right_only_df.shape[0]], "mismatched": [unequal_df.shape[0]]}
-    summary_df = pd.DataFrame(summary_map)
-    mismatch_df = pd.DataFrame(list(mismatch_map.items()), columns=[id_name, 'fields_mismatched'])
     with pd.ExcelWriter(file_name) as writer:
         right_only_df.to_excel(writer, sheet_name="right_only", index=False)
         left_only_df.to_excel(writer, sheet_name="left_only", index=False)
